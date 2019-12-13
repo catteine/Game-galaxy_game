@@ -4,16 +4,24 @@ let Game = {};
 
 // 스테이지 객체
 Game.Stage = {
-  'el': document.querySelector('.stage'),
-  'width': document.querySelector('.stage').offsetWidth,
-  'height': document.querySelector('.stage').offsetHeight,
+  'el': '',
+  'width': '',
+  'height': '',
 };
 
 // 스테이지 만들기
 Game.makeStage = function(){
+  // 스테이지 설정
+  Game.Stage.el = document.querySelector('.stage');
+  Game.Stage.width = document.querySelector('.stage').offsetWidth;
+  Game.Stage.height = document.querySelector('.stage').offsetHeight;
   // 키 이벤트 걸기
   document.body.addEventListener('keydown', event => {
     Game.playerMoving(event.keyCode);
+  });
+  // 키 이벤트 걸기
+  document.body.addEventListener('keyup', event => {
+    Game.Player.el.className = 'player';
   });
 };
 
@@ -50,15 +58,21 @@ Game.playerMoving = function(keyCode){
       // <- : 좌측으로 이동
       console.log('left');
       nextPosX = thisPosX - 10;
-      thisPlayer.el.style.left = nextPosX + 'px';
-      thisPlayer.posX = nextPosX;
+      if (nextPosX >= 0) {
+        thisPlayer.el.classList.add('left');
+        thisPlayer.el.style.left = nextPosX + 'px';
+        thisPlayer.posX = nextPosX;
+      }
       break;
     case 39 :
       // -> : 우측으로 이동
       console.log('right');
       nextPosX = thisPosX + 10;
-      thisPlayer.el.style.left = nextPosX + 'px';
-      thisPlayer.posX = nextPosX;
+      if (nextPosX <= (Game.Stage.width - 30)) {
+        thisPlayer.el.classList.add('right');
+        thisPlayer.el.style.left = nextPosX + 'px';
+        thisPlayer.posX = nextPosX;
+      }
       break;
     case 32 :
       // space : 미사일 발사
@@ -83,7 +97,7 @@ Game.fireAction = function(){
   // Dom 그리기
   missileEl.className = 'missile';
   missileEl.style.top = thisPosY + 'px';
-  missileEl.style.left = thisPosX + 10 + 2 + 'px';
+  missileEl.style.left = thisPosX + 10 + 3 + 'px';
   Game.Stage.el.appendChild(missileEl);
   // 발사 액션
   Game.missileMoving(missileEl);
@@ -124,8 +138,6 @@ Game.makeEnemy = function(){
     idx = c % 10,
     thisPosX, thisPosY = 0;
 
-    console.log(line, idx);
-
     thisPosX = (idx * 30) + ((idx) * 30),
     thisPosY = (line * 30) + ((line + 1) * 30);
 
@@ -157,6 +169,11 @@ Game.checkHit = function(thisX, thisY, missile, interval){
         Game.Stage.el.removeChild(missile);
         document.querySelector('.enemy_group').removeChild(enemy.el);
         Game.EnemyGroup.splice(Game.EnemyGroup.indexOf(enemy), 1);
+        if (Game.EnemyGroup.length === 0) {
+          console.log('Win');
+          document.querySelector('.modal_text').style.display = "block";
+          document.querySelector('.message').innerHTML = "승리";
+        }
       }
     }
   });
@@ -166,35 +183,49 @@ Game.checkHit = function(thisX, thisY, missile, interval){
 Game.enemyGroupMoving = function(){
   let vec = 1,
   vLine = 0;
+  const playerLine = Game.Stage.height - 30 - 30 - 30 - 30;
   let timer = setInterval(() => {
-    if (vLine > 3) {
-      this.EnemyGroup.forEach(enemy => {
-        let nextPosY = enemy.posY + 30;
-        enemy.el.style.top = nextPosY + 'px';
-        enemy.posY = nextPosY;
-      });
-      vec = vec * -1;
-      vLine = 0;
+    if (this.EnemyGroup.length === 0) {
+      clearInterval(timer);
     } else {
-      this.EnemyGroup.forEach(enemy => {
-        let nextPosX = enemy.posX + (30 * vec);
-        enemy.el.style.left = nextPosX + 'px';
-        enemy.posX = nextPosX;
-      });
-      vLine++;
+      if (vLine > 3) {
+        this.EnemyGroup.forEach(enemy => {
+          let nextPosY = enemy.posY + 30;
+          enemy.el.style.top = nextPosY + 'px';
+          enemy.posY = nextPosY;
+        });
+        vec = vec * -1;
+        vLine = 0;
+      } else {
+        this.EnemyGroup.forEach(enemy => {
+          let nextPosX = enemy.posX + (30 * vec);
+          enemy.el.style.left = nextPosX + 'px';
+          enemy.posX = nextPosX;
+        });
+        const temp = this.EnemyGroup[this.EnemyGroup.length - 1];
+        if (temp.posY === playerLine) {
+          console.log('GameOver');
+          clearInterval(timer);
+          document.querySelector('.modal_text').style.display = "block";
+          document.querySelector('.message').innerHTML = "게임오버";
+          Game.Stage.el.removeChild(Game.Player.el);
+        } else {
+          vLine++;
+        }
+      }
     }
   }, 1000);
 };
 
 // 게임 초기화
 Game.init = function(){
-  // 스테이지 초기화
-  this.makeStage();
 
   document.querySelector('.btn_start').addEventListener('click', () => {
 
     document.querySelector('.modal_start').style.display = 'none';
 
+    // 스테이지 초기화
+    this.makeStage();
     // 플레이어 만들기
     this.Player = new this.makePlayer();
     // 적 만들기
@@ -202,7 +233,7 @@ Game.init = function(){
     // 적 움직이기 시작
     setTimeout(() => {
       this.enemyGroupMoving();
-    }, 1000);
+    }, 500);
   });
 };
 
